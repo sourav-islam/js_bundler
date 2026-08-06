@@ -2,6 +2,7 @@ from __future__ import annotations
 from js_bundler.merger import Merger
 from js_bundler.config import AppConfig
 from js_bundler.parser.parser import JavaScriptParser
+from js_bundler.writer import BundleWriter
 
 
 def print_result(files) -> None:
@@ -70,6 +71,13 @@ def main() -> None:
     merger = Merger()
 
     result = merger.merge(javascript_files)
+    writer = BundleWriter()
+    output_paths = writer.write_bundle(
+        javascript_files,
+        result,
+        config.output_directory,
+    )
+
     print()
 
     print("=" * 60)
@@ -96,6 +104,10 @@ def main() -> None:
     for function in result.bundle.functions:
 
         print(function.name)
+
+    print()
+    print("Bundle written to:", output_paths["bundle"])
+    print("Report written to:", output_paths["report"])
 
 
 if __name__ == "__main__":

@@ -2,86 +2,92 @@
 // Imports
 // ===========================
 import { api } from "./api.js";
-import { showToast } from "./global.js";
+import { formatPrice } from "./global.js";
 
 // ===========================
 // Variables
 // ===========================
-const API_URL = "/v2/api";
-const HOME_TITLE = "Home";
-let currentTheme = "dark";
+const API_URL = "/product-api";
+const PRODUCT_LIMIT = 20;
+let currentTheme = "light";
 
 // ===========================
 // Object
 // ===========================
 const config = {
     apiUrl: API_URL,
-    timeout: 3000,
-    retry: 5,
+    timeout: 4000,
+    cache: true,
 };
 
 // ===========================
 // Array
 // ===========================
-const roles = ["admin", "guest"];
+const categories = [
+    "Electronics",
+    "Furniture",
+    "Books",
+];
 
 // ===========================
 // Function
 // ===========================
 function showToast(message) {
-    alert(message);
+    console.log("Product:", message);
 }
 
-function loadHero() {
-    console.log("Hero Loaded");
+function loadProducts() {
+    console.log("Loading Products");
 }
 
 // ===========================
 // Arrow Function
 // ===========================
-const formatPrice = (price) => {
-    return price.toFixed(2);
+const calculateDiscount = (price, discount) => {
+    return price - discount;
 };
 
 // ===========================
 // Class
 // ===========================
-class UserService {
-    login() {
-        console.log("Login Home");
+class ProductService {
+
+    fetchProducts() {
+        console.log("Fetching Products");
     }
 
-    register() {
-        console.log("Register");
+    deleteProduct(id) {
+        console.log(id);
     }
+
 }
 
 // ===========================
 // Call Expression
 // ===========================
-loadHero();
+loadProducts();
 
 // ===========================
-// If
+// If Statement
 // ===========================
-if (HOME_TITLE.length > 0) {
-    console.log(HOME_TITLE);
+if (PRODUCT_LIMIT > 10) {
+    console.log("Large Catalog");
 }
 
 // ===========================
-// For
+// For Loop
 // ===========================
-for (const role of roles) {
-    console.log(role);
+for (const category of categories) {
+    console.log(category);
 }
 
 // ===========================
-// While
+// While Loop
 // ===========================
-let index = 0;
+let page = 1;
 
-while (index < 2) {
-    index++;
+while (page < 3) {
+    page++;
 }
 
 // ===========================
@@ -96,21 +102,30 @@ try {
 // ===========================
 // Switch
 // ===========================
-switch (HOME_TITLE) {
-    case "Home":
-        console.log("Homepage");
+switch (currentTheme) {
+
+    case "light":
+        console.log("Light Theme");
         break;
 
     default:
-        console.log("Other");
+        console.log("Other Theme");
+
 }
 
 // ===========================
 // Event Listener
 // ===========================
-document.addEventListener("click", showToast);
+document.addEventListener(
+    "scroll",
+    loadProducts
+);
 
 // ===========================
 // Export
 // ===========================
-export default UserService;
+export {
+    loadProducts,
+    ProductService,
+    calculateDiscount,
+};
