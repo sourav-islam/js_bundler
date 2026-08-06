@@ -5,57 +5,43 @@ from pathlib import Path
 import tree_sitter_javascript
 from tree_sitter import Language, Parser
 
-from js_bundler.constants import DEFAULT_ENCODING
 from js_bundler.models import JavaScriptFile
 from js_bundler.parser.ast_walker import ASTWalker
 
 
 class JavaScriptParser:
     """
-    Parses JavaScript files using Tree-sitter.
+    Parses JavaScript source code using Tree-sitter and converts it
+    into a JavaScriptFile model.
     """
 
     def __init__(self) -> None:
+        self._language = Language(tree_sitter_javascript.language())
+        self._parser = Parser()
+        self._parser.set_language(self._language)
+        self._walker = ASTWalker()
 
-        language = Language(
-            tree_sitter_javascript.language() #load the js grammar
-        )
+    def parse_file(self, path: Path) -> JavaScriptFile:
+        """
+        Parse a JavaScript file.
+        """
+        source = path.read_text(encoding="utf-8")
+        return self.parse_source(source=source, filename=path.name)
 
-        self.parser = Parser()
-        self.parser.language = language #Now the parser knows JavaScript.
+    def parse_source(self, source: str, filename: str) -> JavaScriptFile:
+        """
+        Parse JavaScript source code.
+        """
+        tree = self._parser.parse(source.encode("utf-8"))
+        return self._walker.walk(tree=tree, source=source, filename=filename)
 
-    def parse_directory(
-        self,
-        directory: Path,
-    ) -> list[JavaScriptFile]:
-
+    def parse_directory(self, directory: Path) -> list[JavaScriptFile]:
+        """
+        Parse every JavaScript file inside a directory.
+        """
         javascript_files: list[JavaScriptFile] = []
 
         for path in sorted(directory.glob("*.js")):
+            javascript_files.append(self.parse_file(path))
 
-            javascript_files.append(
-                self.parse_file(path) #parse_file(home.js)
-            )
-
-        return javascript_files #[ JavaScriptFile(...),JavaScriptFile(...),JavaScriptFile(...)]
-
-    def parse_file(
-        self,
-        path: Path,
-    ) -> JavaScriptFile:
-
-        source = path.read_bytes()
-
-        tree = self.parser.parse(source)
-
-        walker = ASTWalker(source)
-
-        variables, functions = walker.walk(
-            tree.root_node
-        )
-
-        return JavaScriptFile(
-            filename=path.name,
-            variables=variables,
-            functions=functions,
-        )
+        return javascript_files

@@ -1,34 +1,132 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
-from typing import Literal
+
+# =============================================================================
+# Base Declaration
+# =============================================================================
+
 
 @dataclass(slots=True)
-class Variable:
+class BaseDeclaration:
     """
-    Represents a JavaScript variable declaration.
+    Base class for all named JavaScript declarations.
+    """
 
-    Example:
+    name: str
+    source_file: str
+    order: int
 
-        const API_URL = "/api";
+
+# =============================================================================
+# Imports / Exports
+# =============================================================================
+
+
+@dataclass(slots=True)
+class ImportDeclaration:
+    """
+    import { api } from "./api.js"
+    """
+
+    module: str
+    imported: list[str]
+    source_file: str
+    order: int
+
+
+@dataclass(slots=True)
+class ExportDeclaration:
+    """
+    export { showToast }
+    export default UserService
+    """
+
+    exported: list[str]
+    is_default: bool
+    source_file: str
+    order: int
+
+
+# =============================================================================
+# Variables
+# =============================================================================
+
+
+@dataclass(slots=True)
+class Variable(BaseDeclaration):
+    """
+    const API_URL = "/api"
     """
 
     kind: str
-    name: str
     value: str
 
 
+# =============================================================================
+# Objects
+# =============================================================================
+
+
 @dataclass(slots=True)
-class Function:
+class ObjectDeclaration(BaseDeclaration):
     """
-    Represents a JavaScript function declaration.
+    const config = { ... }
+    """
 
-    Example:
+    properties: dict[str, str]
 
-        function showToast(message) {
-            console.log(message);
-        }
+
+# =============================================================================
+# Arrays
+# =============================================================================
+
+
+@dataclass(slots=True)
+class ArrayDeclaration(BaseDeclaration):
+    """
+    const roles = [...]
+    """
+
+    elements: list[str]
+
+
+# =============================================================================
+# Functions
+# =============================================================================
+
+
+@dataclass(slots=True)
+class Function(BaseDeclaration):
+    """
+    function showToast() {}
+    """
+
+    parameters: list[str] = field(default_factory=list)
+    body: str = ""
+
+
+@dataclass(slots=True)
+class ArrowFunction(BaseDeclaration):
+    """
+    const formatPrice = () => {}
+    """
+
+    parameters: list[str] = field(default_factory=list)
+    body: str = ""
+
+
+# =============================================================================
+# Classes
+# =============================================================================
+
+
+@dataclass(slots=True)
+class Method:
+    """
+    Class method.
     """
 
     name: str
@@ -37,72 +135,105 @@ class Function:
 
 
 @dataclass(slots=True)
+class ClassDeclaration(BaseDeclaration):
+    """
+    class UserService {}
+    """
+
+    methods: list[Method] = field(default_factory=list)
+
+
+# =============================================================================
+# Statements
+# =============================================================================
+
+
+@dataclass(slots=True)
+class Statement:
+    """
+    Executable statements that must preserve order.
+    """
+
+    statement_type: str
+    code: str
+    source_file: str
+    order: int
+
+
+# =============================================================================
+# JavaScript File
+# =============================================================================
+
+
+@dataclass(slots=True)
 class JavaScriptFile:
     """
-    Represents one parsed JavaScript file.
+    Internal representation of one JavaScript source file.
     """
 
     filename: str
 
+    imports: list[ImportDeclaration] = field(default_factory=list)
+
     variables: list[Variable] = field(default_factory=list)
+
+    objects: list[ObjectDeclaration] = field(default_factory=list)
+
+    arrays: list[ArrayDeclaration] = field(default_factory=list)
 
     functions: list[Function] = field(default_factory=list)
 
+    arrow_functions: list[ArrowFunction] = field(default_factory=list)
+
+    classes: list[ClassDeclaration] = field(default_factory=list)
+
+    statements: list[Statement] = field(default_factory=list)
+
+    exports: list[ExportDeclaration] = field(default_factory=list)
+
+
+# =============================================================================
+# Comparator Models
+# =============================================================================
 
 
 @dataclass(slots=True)
-class VariableConflict:
+class ComparisonEntry:
     """
-    Same variable name, different value.
-    """
-
-    name: str
-    first: Variable
-    second: Variable
-
-
-@dataclass(slots=True)
-class FunctionDuplicate:
-    """
-    Same function name.
+    Represents one comparison result.
     """
 
-    name: str
-    first: Function
-    second: Function
+    declaration_type: str
+
+    status: str
+
+    first: Any | None = None
+
+    second: Any | None = None
+
+    winner: Any | None = None
 
 
 @dataclass(slots=True)
 class ComparisonResult:
     """
-    Result produced by Comparator.
+    Output of Comparator.
     """
 
-    unique_variables: list[Variable] = field(default_factory=list)
+    imports: list[ComparisonEntry] = field(default_factory=list)
 
-    variable_conflicts: list[VariableConflict] = field(default_factory=list)
+    variables: list[ComparisonEntry] = field(default_factory=list)
 
-    unique_functions: list[Function] = field(default_factory=list)
+    objects: list[ComparisonEntry] = field(default_factory=list)
 
-    duplicate_functions: list[FunctionDuplicate] = field(default_factory=list)
+    arrays: list[ComparisonEntry] = field(default_factory=list)
 
+    functions: list[ComparisonEntry] = field(default_factory=list)
 
-from enum import Enum
+    arrow_functions: list[ComparisonEntry] = field(default_factory=list)
 
+    classes: list[ComparisonEntry] = field(default_factory=list)
 
-class MergeStrategy(str, Enum):
-    PREFER_FIRST = "prefer_first"
-    PREFER_LAST = "prefer_last"
+    statements: list[Statement] = field(default_factory=list)
 
-
-@dataclass(slots=True)
-class MergeResult:
-    bundle: JavaScriptFile
-
-    resolved_conflicts: list[VariableConflict] = field(
-        default_factory=list
-    )
-
-    removed_duplicates: list[str] = field(
-        default_factory=list
-    )
+    exports: list[ExportDeclaration] = field(default_factory=list)
