@@ -36,6 +36,16 @@ class ASTWalker:
 
         return file_model
 
+    # Node types whose dedicated visitor already captures the entire
+    # subtree verbatim as text (Function.body, ArrowFunction.body,
+    # ClassDeclaration methods, ...). The walker must NOT keep recursing
+    # into their children afterwards: doing so would re-discover the
+    # statements *inside* that body (e.g. `console.log(message);` inside
+    # `function showToast(message) {...}`) and hoist them out as bogus
+    # top-level Statement entries, referencing parameters/locals that
+    # don't exist at the top level of the bundle.
+    _OPAQUE_BODY_TYPES = {"function_declaration", "arrow_function", "class_declaration"}
+
     def _walk_node(self, node: Node, file_model: JavaScriptFile) -> None:
         if node.type == "import_statement":
             self._add_import(file_model, node)
@@ -48,18 +58,23 @@ class ASTWalker:
 
         elif node.type == "function_declaration":
             self._add_function(file_model, node)
+            return
 
         elif node.type == "arrow_function":
             self._add_arrow_function(file_model, node)
+            return
 
         elif node.type == "class_declaration":
             self._add_class(file_model, node)
+            return
 
         elif node.type == "object":
             self._add_object(file_model, node)
+            return
 
         elif node.type == "array":
             self._add_array(file_model, node)
+            return
 
         elif node.type in {
             "expression_statement",
@@ -68,12 +83,25 @@ class ASTWalker:
             "while_statement",
             "try_statement",
             "switch_statement",
-            "call_expression",
         }:
+            # Note: "call_expression" is deliberately not in this set.
+            # A call used as a statement (e.g. `foo();`) is wrapped in an
+            # "expression_statement", which _add_statement() already
+            # unwraps to record as a single call_expression Statement.
+            # Matching "call_expression" here too would both double-count
+            # that same call and start picking up call expressions that
+            # aren't statements at all (e.g. nested inside a return value).
             self._add_statement(file_model, node)
 
         for child in node.children:
             self._walk_node(child, file_model)
+
+    # Declarator values with their own dedicated visitor/model. These are
+    # picked up separately when the walker reaches that nested node
+    # directly (e.g. the "object" inside `const config = {...}`), so
+    # recording them again here as a plain Variable would declare the
+    # same name twice in the bundled output.
+    _DEDICATED_VALUE_TYPES = {"object", "array", "arrow_function", "class"}
 
     def _handle_variable_block(
         self,
@@ -82,6 +110,10 @@ class ASTWalker:
     ) -> None:
         for child in node.children:
             if child.type != "variable_declarator":
+                continue
+
+            value_node = child.child_by_field_name("value")
+            if value_node is not None and value_node.type in self._DEDICATED_VALUE_TYPES:
                 continue
 
             visitor = VariableVisitor(

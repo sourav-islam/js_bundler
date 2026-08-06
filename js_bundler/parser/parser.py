@@ -16,9 +16,28 @@ class JavaScriptParser:
     """
 
     def __init__(self) -> None:
+        # Create the tree-sitter Language and construct a Parser.
+        # Different tree-sitter bindings expose different Parser APIs
+        # (some provide `Parser.set_language()`, others accept the
+        # language in the constructor). Try both in a safe way.
         self._language = Language(tree_sitter_javascript.language())
-        self._parser = Parser()
-        self._parser.set_language(self._language)
+
+        # Preferred: create Parser and call set_language if available.
+        parser = Parser()
+        set_lang = getattr(parser, "set_language", None)
+        if callable(set_lang):
+            set_lang(self._language)
+            self._parser = parser
+        else:
+            # Fallback: try to construct Parser with the language argument.
+            try:
+                self._parser = Parser(self._language)
+            except TypeError:
+                # If neither approach works, re-raise a helpful error.
+                raise RuntimeError(
+                    "Unsupported tree-sitter Parser API: cannot set language."
+                )
+
         self._walker = ASTWalker()
 
     def parse_file(self, path: Path) -> JavaScriptFile:

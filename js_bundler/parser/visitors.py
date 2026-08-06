@@ -35,7 +35,9 @@ class ImportVisitor:
 
         for child in self._node.children:
             if child.type == "string":
-                module = self._text(child)
+                # Strip the surrounding quote characters: BundleWriter adds
+                # its own quotes back when it renders the import statement.
+                module = self._text(child).strip("\"'")
             elif child.type == "import_clause":
                 imported.extend(self._collect_import_clause_names(child))
 
@@ -93,11 +95,11 @@ class ExportVisitor:
         is_default = False
 
         for child in self._node.children:
-            if child.type == "identifier":
-                if self._text(child) == "default":
-                    is_default = True
-                else:
-                    exported.append(self._text(child))
+            if child.type == "default":
+                is_default = True
+
+            elif child.type == "identifier":
+                exported.append(self._text(child))
 
             elif child.type == "named_exports":
                 for spec in child.children:
@@ -395,7 +397,7 @@ class ArrayVisitor:
         elements: list[str] = []
 
         for child in self._node.children:
-            if child.type in {"", ","}:
+            if child.type in {"[", "]", ","}:
                 continue
 
             if child.type != "nested_identifier":
@@ -443,7 +445,7 @@ class StatementVisitor:
             order=self._order,
         )
 
-    def _text(self: Node | None) -> str:
+    def _text(self, node: Node | None) -> str:
         if node is None:
             return ""
         return self._source[node.start_byte:node.end_byte]
